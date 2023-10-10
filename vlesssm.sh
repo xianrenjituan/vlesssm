@@ -1157,11 +1157,13 @@ edit_config_do_option() {
                     echo "user_uuid_mode=$user_uuid_mode"
                     echo "已切换 用户UUID模式: 复杂"
                     break
+                else
+                    continue
                 fi
+                echo "返回主菜单选_1_重启服务后生效。"
+                echo "注意！您需要重新获取用户配置才能连接。"
+                read -p "按回车键返回。" pause
             done
-            echo "返回主菜单选_1_重启服务后生效。"
-            echo "注意！您需要重新获取用户配置才能连接。"
-            read -p "按回车键返回。" pause
             ;;
         6)
             if [ "$user_uuid_mode" != "1" ]; then
