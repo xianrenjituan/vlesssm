@@ -1288,7 +1288,7 @@ case "$1" in
         echo "+----------------------------------+" &&
         echo "|  github.com/yeyingorg/vlesssm.sh |" &&
         echo "|     vless+wss 多用户管理脚本     |" &&
-        echo "|        2023-10-10 v1.0.0         |" &&
+        echo "|        2024-10-10 v1.0.0         |" &&
         echo "+----------------------------------+"
         [ ! -f "$dir/config" ] && first_time_run
         [ -f "$dir/config" ] && main_ui
