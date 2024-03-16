@@ -34,5 +34,5 @@ vless服务器的多用户管理脚本
 首先准备好一个IP证书，没有的可以去[**ZeroSSL**](https://zerossl.com/)免费申请  
 然后创建 **/home/vlesssm**目录，把**vlesssm.sh**放进去，然后使用**root**用户/或者`sudo`运行。
 ```bash
-mkdir /home/vlesssm && wget --no-check-certificate -q -O /home/vlesssm/vlesssm.sh "https://github.com/xianrenjituan/vlesssm/releases/download/v0.1/vlesssm.sh" && chmod +x /home/vlesssm/vlesssm.sh && bash /home/vlesssm/vlesssm.sh
+mkdir /home/vlesssm && wget --no-check-certificate -q -O /home/vlesssm/vlesssm.sh "https://github.com/xianrenjituan/vlesssm/releases/download/v0.2/vlesssm.sh" && chmod +x /home/vlesssm/vlesssm.sh && bash /home/vlesssm/vlesssm.sh
 ```
