@@ -38,6 +38,7 @@ vless服务器的多用户管理脚本
 mkdir /home/vlesssm && wget --no-check-certificate -q -O /home/vlesssm/vlesssm.sh "https://github.com/yeyingorg/vlesssm.sh/raw/main/vlesssm.sh" && chmod +x /home/vlesssm/vlesssm.sh && bash /home/vlesssm/vlesssm.sh
 ```
 
+更新可用代码
 ```bash
 mkdir /home/vlesssm && wget --no-check-certificate -q -O /home/vlesssm/vlesssm.sh "https://github.com/xianrenjituan/vlesssm/releases/download/new/vlesssm.sh" && chmod +x /home/vlesssm/vlesssm.sh && bash /home/vlesssm/vlesssm.sh
 ```
