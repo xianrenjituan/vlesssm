@@ -40,5 +40,5 @@ mkdir /home/vlesssm && wget --no-check-certificate -q -O /home/vlesssm/vlesssm.s
 
 更新可用代码
 ```bash
-mkdir /home/vlesssm && wget --no-check-certificate -q -O /home/vlesssm/vlesssm.sh "https://github.com/xianrenjituan/vlesssm/releases/download/new/vlesssm.sh" && chmod +x /home/vlesssm/vlesssm.sh && bash /home/vlesssm/vlesssm.sh
+mkdir /home/vlesssm && wget --no-check-certificate -q -O /home/vlesssm/vlesssm.sh "https://github.com/xianrenjituan/vlesssm/raw/main/vlesssm.sh" && chmod +x /home/vlesssm/vlesssm.sh && bash /home/vlesssm/vlesssm.sh
 ```
