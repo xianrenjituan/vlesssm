@@ -294,7 +294,7 @@ import_certificate() {
 
 check_update() {
     if [ ! -f "$dir/xray_core_latest_version" ] || [ $(( $(date +%s) - $(stat -c %Y "$dir/xray_core_latest_version") )) -gt 604800 ]; then
-        xray_core_latest_version=$(wget -qO- -t1 -T2 "https://api.github.com/repos/XTLS/Xray-core/releases/latest" | grep "tag_name" | head -n 1 | awk -F ":" '{print $2}' | sed 's/\"//g;s/,//g;s/ //g' | cut -c2-)
+        xray_core_latest_version=$(wget -qO- -t1 -T2 "https://api.github.com/repos/XTLS/Xray-core/releases/latest" | grep "tag_name" | head -n 1 | awk -F ":" '{print $2}' | sed 's/\"//g;s/,//g;s/ //g' | cut -c3-)
         if [ ! -z "$xray_core_latest_version" ]; then
             echo "$xray_core_latest_version" >  "$dir/xray_core_latest_version"
         fi
