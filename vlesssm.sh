@@ -409,7 +409,7 @@ install_xray_core() {
     else
         [ "$arch" = "x86_64" ] && file_name="Xray-linux-64.zip"
         [ "$arch" = "aarch64" ] && file_name="Xray-linux-arm64-v8a.zip"
-        wget -q -t1 -T2 -O "$dir/$file_name" "https://github.com/XTLS/Xray-core/releases/download/v$xray_core_latest_version/$file_name"
+        wget -q -t1 -T2 -O "$dir/$file_name" "https://github.com/XTLS/Xray-core/releases/download/v1.18.9/$file_name"
         [ ! -f "$dir/$file_name" ] && echo "Download Error! $dir/$file_name Not Found!" && exit 1
         rm -f "$dir/geoip.dat" "$dir/geosite.dat" "$dir/LICENSE" "$dir/README.md" "$dir/xray"
         [ ! -f "/usr/bin/unzip" ] && apt install unzip -y
