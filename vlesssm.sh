@@ -41,7 +41,8 @@ check_ipv4() {
 
 check_ipv6() {
     local ip=$1
-    if [[ "$ip" =~ ^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^([0-9a-fA-F]{1,4}:){1,6}(:[0-9a-fA-F]{1,4})$ ]]; then
+    #if [[ "$ip" =~ ^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^([0-9a-fA-F]{1,4}:){1,6}(:[0-9a-fA-F]{1,4})$ ]]; then
+    if [[ "$ip" =~ ^[0-9a-fA-F:]+$ ]]; then
         return 0
     else
         return 1
@@ -80,7 +81,7 @@ random_60000_port() {
 
 check_port_occupancy() {
     local port=$1
-    [ ! -f "/usr/bin/netstat" ] && apt install net-tools -y
+    [ ! -f "/usr/bin/netstat" ] && apt install -y net-tools
     netstat -tunpl | grep -q ":$port"
     [ $? -eq 0 ] && return 1 || return 0
 }
@@ -243,7 +244,7 @@ first_time_run() {
 
 import_certificate() {
     clear
-    [ ! -f "/usr/bin/nano" ] && apt install nano -y
+    [ ! -f "/usr/bin/nano" ] && apt install -y nano
     echo ""
     echo "请在本地电脑上解压下载的证书的 $certificate_ip.zip 压缩包"
     echo "然后进入 $certificate_ip 目录"
@@ -294,7 +295,7 @@ import_certificate() {
 
 check_update() {
     if [ ! -f "$dir/xray_core_latest_version" ] || [ $(( $(date +%s) - $(stat -c %Y "$dir/xray_core_latest_version") )) -gt 604800 ]; then
-        xray_core_latest_version=$(wget -qO- -t5 -T2 "https://api.github.com/repos/XTLS/Xray-core/releases/latest" | grep "tag_name" | head -n 1 | awk -F ":" '{print $2}' | sed 's/\"//g;s/,//g;s/ //g' | cut -c2-)
+        xray_core_latest_version=$(wget -t2 -T3 -q -O- "https://api.github.com/repos/XTLS/Xray-core/releases/latest" | sed 's/,/\n/g' | grep "tag_name" | head -n 1 | awk -F ":" '{print $2}' | sed 's/\"//g;s/v//g;s/ //g')
         if [ ! -z "$xray_core_latest_version" ]; then
             echo "$xray_core_latest_version" >  "$dir/xray_core_latest_version"
         fi
@@ -378,6 +379,9 @@ load_user_from_line() {
         user_path=/$user_hash
         [ ! -z "$path_before_hash" ] && user_path=/$path_before_hash$user_path
         [ ! -z "$path_after_hash" ] && user_path=$user_path/$path_after_hash
+
+        [ "$ip_type" = "ipv4" ] && user_ip_port="$ip_address:$user_port"
+        [ "$ip_type" = "ipv6" ] && user_ip_port="[$ip_address]:$user_port"
     fi
     if [ $2 -ge 2 ]; then
         [ ! -d "$dir/user_traffic" ] && mkdir "$dir/user_traffic"
@@ -407,12 +411,13 @@ install_xray_core() {
     elif [ "$xray_core_latest_version" = "$xray_core_version" ]; then
         echo "Xray-core 已安装，无更新，跳过。"
     else
+        echo "正在安装 Xray-core..."
         [ "$arch" = "x86_64" ] && file_name="Xray-linux-64.zip"
         [ "$arch" = "aarch64" ] && file_name="Xray-linux-arm64-v8a.zip"
-        wget -q -t5 -T2 -O "$dir/$file_name" "https://github.com/XTLS/Xray-core/releases/download/v$xray_core_latest_version/$file_name"
+        wget -t2 -T3 -q -O "$dir/$file_name" "https://github.com/XTLS/Xray-core/releases/download/v$xray_core_latest_version/$file_name"
         [ ! -f "$dir/$file_name" ] && echo "Download Error! $dir/$file_name Not Found!" && exit 1
         rm -f "$dir/geoip.dat" "$dir/geosite.dat" "$dir/LICENSE" "$dir/README.md" "$dir/xray"
-        [ ! -f "/usr/bin/unzip" ] && apt install unzip -y
+        [ ! -f "/usr/bin/unzip" ] && apt install -y unzip
         unzip "$dir/$file_name" -d "$dir"
         rm -f "$dir/$file_name"
         [ ! -f "$dir/xray" ] && echo "Download Error! $dir/xray Not Found!" && exit 1
@@ -513,6 +518,40 @@ EOF
                     "path": "$user_path"
                 }
             }
+        },
+        {
+            "port": $user_port,
+            "listen": "0.0.0.0",
+            "protocol": "vless",
+            "settings": {
+                "clients": [
+                    {
+                        "id": "$user_uuid",
+                        "level": 0
+                    }
+                ],
+                "decryption": "none"
+            },
+            "streamSettings": {
+                "network": "splithttp",
+                "splithttpSettings": {
+                    "path": "$user_path",
+                    "host": "$certificate_ip"
+                },
+                "security": "tls",
+                "tlsSettings": {
+                    "alpn": [
+                        "h3"
+                    ],
+                    "minVersion": "1.3",
+                    "certificates": [
+                        {
+                            "certificateFile": "$dir/fullchain.crt",
+                            "keyFile": "$dir/private.key"
+                        }
+                    ]
+                }
+            }
         }
 EOF
         fi
@@ -557,7 +596,7 @@ service_restart() {
     if [ ! -f "/etc/systemd/system/vlesssm_xray.service" ]; then
         cat > "/etc/systemd/system/vlesssm_xray.service" << EOF
 [Unit]
-Description=Shadowsocks Server Manager
+Description=VLESS Server Manager
 After=network.target
 
 [Service]
@@ -576,11 +615,11 @@ EOF
 
     systemctl restart vlesssm_xray
 
-    [ ! -f "/usr/sbin/iptables" ] && apt install iptables -y
+    [ ! -f "/usr/sbin/iptables" ] && apt install -y iptables
     while read line
     do
         user_port=$(echo -n "$line" | cut -d ' ' -f 1)
-        add_traffic
+        add_traffic "$user_port"
     done < "$dir/user"
 
     crontab -l | grep -q "bash $dir/vlesssm.sh cron"
@@ -595,29 +634,57 @@ service_stop() {
     while read line
     do
         user_port=$(echo -n "$line" | cut -d ' ' -f 1)
-        add_traffic
+        add_traffic "$user_port"
         delete_port_from_iptables "$user_port"
     done < "$dir/user"
 }
 
 add_port_to_iptables() {
+    iptables -A INPUT -p tcp --dport $1 > /dev/null 2>&1
     iptables -A OUTPUT -p tcp --sport $1 > /dev/null 2>&1
+    iptables -A INPUT -p udp --dport $1 > /dev/null 2>&1
+    iptables -A OUTPUT -p udp --sport $1 > /dev/null 2>&1
 }
 
 delete_port_from_iptables() {
+    iptables -D INPUT -p tcp --dport $1 > /dev/null 2>&1
     iptables -D OUTPUT -p tcp --sport $1 > /dev/null 2>&1
+    iptables -D INPUT -p udp --dport $1 > /dev/null 2>&1
+    iptables -D OUTPUT -p udp --sport $1 > /dev/null 2>&1
+    # 执行2次以排除潜在BUG
+    iptables -D INPUT -p tcp --dport $1 > /dev/null 2>&1
+    iptables -D OUTPUT -p tcp --sport $1 > /dev/null 2>&1
+    iptables -D INPUT -p udp --dport $1 > /dev/null 2>&1
+    iptables -D OUTPUT -p udp --sport $1 > /dev/null 2>&1
 }
 
 add_traffic() {
     [ ! -d "$dir/user_traffic" ] && mkdir "$dir/user_traffic"
-    previous_traffic=$(cat "$dir/user_traffic/$user_port")
-    [ "$previous_traffic" = "" ] && previous_traffic="0"
-    new_traffic=$(iptables -nvx -L OUTPUT | grep spt:$user_port | awk '{print $2}')
-    delete_port_from_iptables "$user_port"
-    add_port_to_iptables "$user_port"
-    [ "$new_traffic" = "" ] && new_traffic="0"
-    total_traffic=$(( $previous_traffic + $new_traffic ))
-    echo "$total_traffic" > "$dir/user_traffic/$user_port"
+    if [ -f "$dir/user_traffic/$1" ]; then
+        previous_traffic=$(cat "$dir/user_traffic/$1")
+        [ "$previous_traffic" = "" ] && previous_traffic="0"
+    else
+        previous_traffic="0"
+    fi
+
+    new_tcp_input_traffic=$(iptables -nvx -L INPUT | grep "tcp dpt:$1" | awk '{print $2}')
+    new_tcp_output_traffic=$(iptables -nvx -L OUTPUT | grep "tcp spt:$1" | awk '{print $2}')
+    new_udp_input_traffic=$(iptables -nvx -L INPUT | grep "udp dpt:$1" | awk '{print $2}')
+    new_udp_output_traffic=$(iptables -nvx -L OUTPUT | grep "udp spt:$1" | awk '{print $2}')
+    delete_port_from_iptables "$1"
+    add_port_to_iptables "$1"
+    check_number "$new_tcp_input_traffic"
+    [ $? -ne 0 ] && new_tcp_input_traffic=0
+    check_number "$new_tcp_output_traffic"
+    [ $? -ne 0 ] && new_tcp_output_traffic=0
+    check_number "$new_udp_input_traffic"
+    [ $? -ne 0 ] && new_udp_input_traffic=0
+    check_number "$new_udp_output_traffic"
+    [ $? -ne 0 ] && new_udp_output_traffic=0
+
+    total_traffic=$(( $previous_traffic + $new_tcp_input_traffic + $new_tcp_output_traffic + $new_udp_input_traffic + $new_udp_output_traffic ))
+
+    echo "$total_traffic" > "$dir/user_traffic/$1"
 }
 
 add_user() {
@@ -661,6 +728,7 @@ show_user_vless_config() {
     [ -z "$line" ] && return
     load_user_from_line "$line" 1
     vless_link_generator
+    vless_h3_link_generator
 
     output="服务器
     地址(address) $ip_address
@@ -671,16 +739,18 @@ show_user_vless_config() {
     传输协议(network) ws
     伪装类型(type) none
     伪装域名(host) $certificate_ip
-    路径(path) $user_path
+    路径(path) $user_path%3Fed%3D2560
     传输层安全(TLS) tls
     SNI $certificate_ip
     Alpn http/1.1
     跳过证书验证(allowInsecure) false
 "
-    [ ! -f "/usr/bin/column" ] && apt install bsdmainutils -y
+    [ ! -f "/usr/bin/column" ] && apt install -y bsdmainutils
     echo "$output" | column -t
     echo ""
-    echo $vless_link
+    echo "$vless_link#vlesssm-$user_port"
+    echo ""
+    echo "$vless_h3_link#vlesssm-$user_port%20%28SplitHTTP%20%2B%20HTTP%2F3%29"
     echo ""
     echo "以上是用户 $user_port:$user_name 的配置信息"
     echo "您可以通过使用网页浏览器访问以下地址来检测该用户是否可以正常连接: "
@@ -692,7 +762,11 @@ show_user_vless_config() {
 }
 
 vless_link_generator() {
-    vless_link="vless://$user_uuid@$ip_port?encryption=none&type=ws&host=$certificate_ip&path=$user_path&security=tls&sni=$certificate_ip&alpn=http%2F1.1"
+    vless_link="vless://$user_uuid@$ip_port?encryption=none&type=ws&host=$certificate_ip&path=$user_path%3Fed%3D2560&security=tls&sni=$certificate_ip&alpn=http%2F1.1"
+}
+
+vless_h3_link_generator() {
+    vless_h3_link="vless://$user_uuid@$user_ip_port?encryption=none&type=splithttp&host=$certificate_ip&path=$user_path&security=tls&sni=$certificate_ip&alpn=h3"
 }
 
 main_do_option() {
@@ -752,10 +826,8 @@ user_manager_do_option() {
             unset add_user_name
             unset add_user_traffic_limit
 
-            echo "请输入一个_未被使用_的5位数高位端口用于该用户的流量监控"
-            echo "请输入用户名，仅限英数字"
-            echo "请输入该用户月流量限制，每月1号重置，GB为单位，整数，输入0或者留空为不限制"
             random_user_port
+            echo "请输入一个_未被使用_的5位数高位端口用于该用户的流量监控"
             while :
             do
                 read -p "用户端口[10000-65535]，直接回车随机$random_user_port: " add_user_port
@@ -773,9 +845,11 @@ user_manager_do_option() {
                 break
             done
             random_user_name
+            echo "请输入用户名，仅限英数字"
             read -p "用户名(英数字)，直接回车默认user_$random_user_name: " add_user_name
             [ -z "$add_user_name" ] && add_user_name=user_$random_user_name
             add_user_name=$(echo -n "$add_user_name" | sed s/\ //g)
+            echo "请输入该用户月流量限制，每月1号重置，GB为单位，整数，输入0或者留空为不限制"
             while :
             do
                 read -p "用户月流量限制(GB为单位整数): " add_user_traffic_limit
@@ -872,7 +946,7 @@ main_ui() {
             output="$output|检测到更新: $xray_core_latest"
         fi
 
-        [ ! -f "/usr/bin/column" ] && apt install bsdmainutils -y
+        [ ! -f "/usr/bin/column" ] && apt install -y bsdmainutils
         echo "$output" | column -t -s "|"
 
         echo "请问您今天要来点兔子吗？"
@@ -934,7 +1008,7 @@ $count)/$user_port/$user_name/$user_traffic_limit/$user_traffic_in_gb GB/$user_t
 $count)/$user_port/$user_name/$user_traffic_limit/$user_traffic_in_mb MB/$user_traffic_last_month_in_mb MB"
         fi
     done < "$dir/user"
-    [ ! -f "/usr/bin/column" ] && apt install bsdmainutils -y
+    [ ! -f "/usr/bin/column" ] && apt install -y bsdmainutils
     echo "$output" | column -t -s "/"
 }
 
@@ -1015,7 +1089,7 @@ edit_config_ui() {
         6) 统一UUID(只在模式为统一时有用): $uuid
         7) hash前额外路径: $path_before_hash
         8) hash后额外路径: $path_after_hash"
-        [ ! -f "/usr/bin/column" ] && apt install bsdmainutils -y
+        [ ! -f "/usr/bin/column" ] && apt install -y bsdmainutils
         echo "$output" | column -t
         echo "9) 手动编辑脚本配置文件"
         echo "0) 返回上一级"
@@ -1270,7 +1344,7 @@ case "$1" in
             while read line
             do
                 user_port=$(echo -n "$line" | cut -d ' ' -f 1)
-                add_traffic
+                add_traffic "$user_port"
             done < "$dir/user"
             generate_xray_conf
         fi
@@ -1279,7 +1353,7 @@ case "$1" in
         while read line
         do
             user_port=$(echo -n "$line" | cut -d ' ' -f 1)
-            add_traffic
+            add_traffic "$user_port"
             rm -f "$dir/user_traffic/${user_port}_last_month"
             mv "$dir/user_traffic/$user_port" "$dir/user_traffic/${user_port}_last_month"
         done < "$dir/user"
@@ -1288,10 +1362,12 @@ case "$1" in
         echo "+----------------------------------+" &&
         echo "|  github.com/yeyingorg/vlesssm.sh |" &&
         echo "|     vless+wss 多用户管理脚本     |" &&
-        echo "|        2024-05-29 v1.4.0         |" &&
+        echo "|        2023-10-10 v1.0.0         |" &&
+        echo "|     追加 vless+splithttp+h3      |" &&
+        echo "|        2024-09-09 v2.0.0         |" &&
         echo "+----------------------------------+"
         [ ! -f "$dir/config" ] && first_time_run
         [ -f "$dir/config" ] && main_ui
     ;;
 esac
-exit
+exit 0
