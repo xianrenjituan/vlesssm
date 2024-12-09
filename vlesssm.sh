@@ -533,8 +533,8 @@ EOF
                 "decryption": "none"
             },
             "streamSettings": {
-                "network": "splithttp",
-                "splithttpSettings": {
+                "network": "xhttp",
+                "xhttpSettings": {
                     "path": "$user_path",
                     "host": "$certificate_ip"
                 },
@@ -750,7 +750,7 @@ show_user_vless_config() {
     echo ""
     echo "$vless_link#vlesssm-$user_port"
     echo ""
-    echo "$vless_h3_link#vlesssm-$user_port%20%28SplitHTTP%20%2B%20HTTP%2F3%29"
+    echo "$vless_h3_link#vlesssm-$user_port%20%28XHTTP%20%2B%20HTTP%2F3%29"
     echo ""
     echo "以上是用户 $user_port:$user_name 的配置信息"
     echo "您可以通过使用网页浏览器访问以下地址来检测该用户是否可以正常连接: "
@@ -766,7 +766,7 @@ vless_link_generator() {
 }
 
 vless_h3_link_generator() {
-    vless_h3_link="vless://$user_uuid@$user_ip_port?encryption=none&type=splithttp&host=$certificate_ip&path=$user_path&security=tls&sni=$certificate_ip&alpn=h3"
+    vless_h3_link="vless://$user_uuid@$user_ip_port?encryption=none&type=xhttp&host=$certificate_ip&path=$user_path&security=tls&sni=$certificate_ip&alpn=h3"
 }
 
 main_do_option() {
@@ -1363,7 +1363,7 @@ case "$1" in
         echo "|  github.com/yeyingorg/vlesssm.sh |" &&
         echo "|     vless+wss 多用户管理脚本     |" &&
         echo "|        2023-10-10 v1.0.0         |" &&
-        echo "|     追加 vless+splithttp+h3      |" &&
+        echo "|     追加 vless+xhttp+h3      |" &&
         echo "|        2024-09-09 v2.0.0         |" &&
         echo "+----------------------------------+"
         [ ! -f "$dir/config" ] && first_time_run
