@@ -1,9 +1,7 @@
 #!/bin/bash
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
-
 dir=/home/vlesssm
-
 [ $(id -u) != "0" ] && echo "错误！你必须要以root身份运行本脚本！" && exit 1
 [ "$dir" != "$(dirname $(readlink -f "$0"))" ] && echo "请把本脚本移动到 $dir 中运行，确保本脚本的路径是 $dir/vlesssm.sh" && exit 1
 cat /etc/issue | grep -q "Debian" && [ $? -eq 0 ] && is_debian=1
